@@ -14,7 +14,7 @@ struct PhotoDtoOut: Decodable {
 struct PhotoTypeDtoOut: Decodable, Encodable, Equatable {
     let id: Int
     let name: String
-    let image: String?
+    var image: String?
 }
 
 struct Page<T: Decodable>: Decodable { // Измените здесь

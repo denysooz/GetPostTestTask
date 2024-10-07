@@ -7,66 +7,103 @@
 
 import Foundation
 import Combine
+import SwiftUI
+import Combine
 
 class MainViewModel: ObservableObject {
     @Published var photos: [PhotoTypeDtoOut] = []
-    @Published var isLoading = false
-    
-    var currentPage = 1
-    private var hasMorePages = true
-    private let networkService = NetworkService()
-    
-    init() {
-        loadCachedPhotos()
-    }
+    @Published var isLoading: Bool = false
+    @Published var isLoadingInitial: Bool = false
+        @Published var alertStatus: String?
+        @Published var alertHeaders: String?
+        @Published var alertMessage: String?
+        @Published var showAlert: Bool = false
+    var hasMorePages: Bool = true
+    var currentPage: Int = 1
+    private var cancellables = Set<AnyCancellable>()
+    private let networkService = NetworkService() // Предполагается, что у вас есть сервис для сетевых запросов
 
     func loadAllPhotos() {
+        print("Начинается загрузка всех фотографий")
         loadMorePhotos(page: currentPage)
     }
 
     func loadMorePhotos(page: Int) {
         guard !isLoading && hasMorePages else { return }
         isLoading = true
-        
-        networkService.fetchPages(page: page) { [weak self] result in
-            DispatchQueue.main.async {
+
+        // Выполнение сетевого запроса в фоновом потоке
+        networkService.fetchPages(page: page)
+            .receive(on: DispatchQueue.main) // Возвращаемся на главный поток для обновления UI
+            .sink { [weak self] completion in
                 self?.isLoading = false
-                switch result {
-                case .success(let page):
-                    if page.content.isEmpty {
-                        self?.hasMorePages = false // Нет больше страниц для загрузки
-                    } else {
-                        self?.photos.append(contentsOf: page.content)
-                        self?.cachePhotos(self!.photos)
-                        self?.currentPage += 1
-                    }
-                case .failure(let error):
+                if case let .failure(error) = completion {
                     print("Error fetching pages: \(error)")
+                    // Можно уведомить пользователя об ошибке здесь
+                }
+            } receiveValue: { [weak self] page in
+                guard let self = self else { return }
+                if page.content.isEmpty {
+                    self.hasMorePages = false
+                } else {
+                    self.photos.append(contentsOf: page.content)
+                    self.currentPage += 1
+                    self.cachePhotos(page.content) // Кэшируем загруженные фотографии
+                    
+                    // Выводим сообщение о количестве загруженных фотографий
+                    print("Все фотографии загружены, текущее количество: \(self.photos.count)")
                 }
             }
-        }
-    }
-
-    private func loadCachedPhotos() {
-        if let data = UserDefaults.standard.data(forKey: "cachedPhotos") {
-            let decoder = JSONDecoder()
-            if let cachedPhotos = try? decoder.decode([PhotoTypeDtoOut].self, from: data) {
-                self.photos = cachedPhotos
-            }
-        }
+            .store(in: &cancellables)
     }
 
     private func cachePhotos(_ photos: [PhotoTypeDtoOut]) {
+        let currentCachedPhotos = loadCachedPhotos()
+        var updatedPhotos = currentCachedPhotos
+
+        for photo in photos {
+            if !updatedPhotos.contains(where: { $0.id == photo.id }) {
+                updatedPhotos.append(photo)
+            }
+        }
+
         let encoder = JSONEncoder()
-        if let data = try? encoder.encode(photos) {
+        if let data = try? encoder.encode(updatedPhotos) {
             UserDefaults.standard.set(data, forKey: "cachedPhotos")
         }
     }
-    
+
+    private func loadCachedPhotos() -> [PhotoTypeDtoOut] {
+        if let data = UserDefaults.standard.data(forKey: "cachedPhotos") {
+            let decoder = JSONDecoder()
+            if let cachedPhotos = try? decoder.decode([PhotoTypeDtoOut].self, from: data) {
+                return cachedPhotos
+            }
+        }
+        return []
+    }
+
     func clearCache() {
         UserDefaults.standard.removeObject(forKey: "cachedPhotos")
-        photos.removeAll() // Очищаем массив фотографий
-        currentPage = 1 // Сбрасываем счетчик страниц
-        hasMorePages = true // Разрешаем загрузку новых страниц
+        photos.removeAll()
+        currentPage = 1
+        hasMorePages = true
+    }
+
+    func uploadPhoto(name: String, photoID: Int, image: UIImage) {
+        networkService.uploadPhoto(name: name, photoID: photoID, image: image) { [weak self] (result: Result<PostResponse, Error>) in
+            switch result {
+            case .success(let postResponse):
+                self?.alertStatus = "Success"
+                self?.alertHeaders = "Response Headers: \(postResponse.headers?.description ?? "No headers")"
+                self?.alertMessage = "ID: \(postResponse.id)"
+                self?.showAlert = true
+            case .failure(let error):
+                self?.alertStatus = "Error"
+                self?.alertHeaders = "No headers"
+                self?.alertMessage = error.localizedDescription
+                self?.showAlert = true
+            }
+        }
     }
 }

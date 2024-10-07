@@ -255,6 +255,8 @@
 				DEVELOPMENT_TEAM = HN9GG893K9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Мы нуждаемся в доступе к камере для съемки фотографий.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Мы нуждаемся в доступе к библиотеке фотографий.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,6 +286,8 @@
 				DEVELOPMENT_TEAM = HN9GG893K9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Мы нуждаемся в доступе к камере для съемки фотографий.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Мы нуждаемся в доступе к библиотеке фотографий.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
